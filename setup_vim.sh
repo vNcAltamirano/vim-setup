@@ -150,7 +150,8 @@ nnoremap <leader>df :%s/{{FECHA}}/\=strftime("%Y-%m-%d")/g<CR>
 nmap <Leader>q :q<CR>
 
 " --- Guardar como root
-cmap w!! w !sudo tee % > /dev/null
+"cmap w!! w !sudo tee % > /dev/null
+command! W execute 'w !sudo tee % >/dev/null' | edit!
 
 " =========================
 " Plugins (vim-plug)
