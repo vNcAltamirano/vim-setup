@@ -4,11 +4,9 @@ set -Eeuo pipefail
 # =============== utilidades ===============
 trap 's=$?; echo "❌ Error (exit $s) en línea $LINENO: \"${BASH_COMMAND}\"" >&2' ERR
 umask 022
-timestamp() { date +"%Y%m%d-%H%M%S"; }
 
 need_cmd() { command -v "$1" >/dev/null 2>&1; }
 
-# Función crítica para escribir archivos y crear directorios automáticamente
 write_file() {
     local file="$1"
     mkdir -p "$(dirname "$file")"
@@ -24,10 +22,8 @@ if need_cmd sudo; then SUDO="sudo"; else SUDO=""; fi
 $SUDO apt-get update -y
 $SUDO apt-get install -y --no-install-recommends bc software-properties-common
 
-# Obtener versión de Ubuntu
 UBUNTU_VER=$(lsb_release -rs 2>/dev/null || grep -oP 'VERSION_ID="\K[^"]+' /etc/os-release)
 
-# Solo agregar PPA si es menor a 24.04
 if [[ $(echo "$UBUNTU_VER < 24.04" | bc -l) -eq 1 ]]; then
     echo "-> Ubuntu < 24.04 detectado. Agregando PPA de Vim..."
     $SUDO add-apt-repository -y ppa:jonathonf/vim
@@ -36,36 +32,40 @@ fi
 $SUDO apt-get update -y
 $SUDO apt-get install -y --no-install-recommends \
   vim git curl ca-certificates \
-  ripgrep shfmt npm clang-format python3-pip python3-venv
+  ripgrep shfmt clang-format python3-pip python3-venv
 
-# =============== 1.1) Instalar ruff (Linter/Formatter veloz) ===============
+# =============== 1.1) Instalar ruff ===============
 echo "-> Instalando ruff..."
 python3 -m pip install --user ruff --break-system-packages 2>/dev/null || python3 -m pip install --user ruff
 
-# Configurar PATH
 if ! grep -q ".local/bin" ~/.zshrc; then
     echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
-# Configurar npm para instalaciones locales
-mkdir -p "$HOME/.npm-global"
-npm config set prefix "$HOME/.npm-global"
-export PATH="$HOME/.npm-global/bin:$PATH"
+# =============== 1.2) Node via NVM (Corregido) ===============
+echo "-> Limpiando conflictos previos de NPM y configurando NVM..."
 
-# =============== 1.2) Node via NVM ===============
-echo "-> Instalando NVM y Node LTS..."
+# Eliminar configuración de prefijo manual que causa error con NVM
+if [ -f "$HOME/.npmrc" ]; then
+    sed -i '/prefix=/d' "$HOME/.npmrc" 2>/dev/null || true
+fi
+
 export NVM_DIR="$HOME/.nvm"
 if [ ! -d "$NVM_DIR" ]; then
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 fi
 
-# Cargar NVM
-source "$NVM_DIR/nvm.sh" 2>/dev/null || true
+# Cargar NVM en la sesión actual
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+echo "-> Instalando Node LTS..."
 nvm install --lts
 nvm use --lts
+nvm alias default 'lts/*'
 
-# Instalar Prettier
+# Ahora instalar Prettier (NVM manejará el path global automáticamente)
 npm install -g prettier
 
 # =============== 2) vim-plug ===============
@@ -168,7 +168,6 @@ write_file "$HOME/.vim/templates/skeleton.sh" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 # Autor: Vinicio Altamirano
-# Fecha: {{FECHA}}
 
 main() {
     echo "Iniciando script..."
@@ -190,11 +189,12 @@ EOF
 
 # =============== 5) PlugInstall ===============
 echo "[5/6] Instalando plugins de Vim..."
+export TERM=xterm-256color
 vim +':silent! PlugInstall --sync' +':qa' >/dev/null 2>&1 || true
 
 # =============== 6) Resumen ===============
 echo "========================================"
 echo "✅ ENTORNO CONFIGURADO CON ÉXITO"
 echo "Formatters: shfmt, ruff (python), prettier (js)"
-echo "Comandos clave: <leader>r (Run), <leader>f (Format), <leader>nt (Explorer)"
+echo "Node: $(node -v) (vía NVM)"
 echo "========================================"
