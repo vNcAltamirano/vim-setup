@@ -24,7 +24,7 @@ fi
 $SUDO apt-get update -y
 $SUDO apt-get install -y --no-install-recommends \
   vim git curl ca-certificates \
-  ripgrep shfmt npm black clang-format bc
+  ripgrep shfmt npm black clang-format bc python3-pip
 
 # =============== 1.1) Instalar ruff ===============
 echo "-> Instalando ruff..."
