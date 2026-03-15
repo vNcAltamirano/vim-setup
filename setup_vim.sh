@@ -7,7 +7,7 @@ umask 022
 timestamp() { date +"%Y%m%d-%H%M%S"; }
 
 need_cmd() { command -v "$1" >/dev/null 2>&1; }
-$SUDO apt-get update -y
+
 
 # =============== 1) paquetes base ===============
 echo "[1/6] Detectando versión de Ubuntu e instalando paquetes..."
