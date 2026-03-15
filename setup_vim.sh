@@ -7,48 +7,47 @@ umask 022
 timestamp() { date +"%Y%m%d-%H%M%S"; }
 
 need_cmd() { command -v "$1" >/dev/null 2>&1; }
-backup_if_exists() {
-  local f="$1"
-  if [[ -e "$f" ]]; then
-    mv -f -- "$f" "$f.bak.$(timestamp)"
-    echo "↪️  Backup: $f.bak.$(timestamp)"
-  fi
-}
-write_file() {
-  local path="$1"
-  backup_if_exists "$path"
-  mkdir -p -- "$(dirname "$path")"
-  cat >"$path"
-  chmod 0644 "$path" || true
-  echo "✓ Escrito: $path"
-}
-
-if need_cmd sudo; then SUDO="sudo"; else SUDO=""; fi
 
 # =============== 1) paquetes base ===============
-echo "[1/6] Instalando paquetes base..."
-$SUDO add-apt-repository ppa:jonathonf/vim
+echo "[1/6] Detectando versión de Ubuntu e instalando paquetes..."
+if need_cmd sudo; then SUDO="sudo"; else SUDO=""; fi
+
+# Obtener versión de Ubuntu
+UBUNTU_VER=$(lsb_release -rs 2>/dev/null || grep -oP 'VERSION_ID="\K[^"]+' /etc/os-release)
+
+# Solo agregar PPA si es menor a 24.04, ya que en 24.04+ no existe/no es necesario
+if [[ $(echo "$UBUNTU_VER < 24.04" | bc -l) -eq 1 ]]; then
+    echo "-> Ubuntu < 24.04 detectado. Agregando PPA de Vim..."
+    $SUDO add-apt-repository -y ppa:jonathonf/vim
+fi
+
 $SUDO apt-get update -y
 $SUDO apt-get install -y --no-install-recommends \
   vim git curl ca-certificates \
-  ripgrep shfmt npm black clang-format
+  ripgrep shfmt npm black clang-format bc
 
 # =============== 1.1) Instalar ruff ===============
-$SUDO apt update && sudo apt install -y ruff
-python3 -m pip install --user ruff 
+echo "-> Instalando ruff..."
+# Intentar instalar por apt, si falla (como en 22.04), no detener el script
+$SUDO apt install -y ruff || echo "⚠️ Ruff no disponible en apt, se instalará vía pip."
 
-# Agrega la carpeta de apps de python al camino de búsqueda de Linux
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+# Instalación vía Python (funciona en ambas versiones)
+python3 -m pip install --user ruff --break-system-packages 2>/dev/null || python3 -m pip install --user ruff
 
-# Aplica el cambio ahora mismo
-source ~/.zshrc
+# Configurar PATH para binarios locales de Python si no existe
+if ! grep -q ".local/bin" ~/.zshrc; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+fi
 
-# Configurar npm para instalaciones locales y evitar el error EACCES
+# Intentar aplicar cambios de zsh sin morir si el shell actual no es zsh
+source ~/.zshrc 2>/dev/null || export PATH="$HOME/.local/bin:$PATH"
+
+# Configurar npm para instalaciones locales (EACCES fix)
 mkdir -p "$HOME/.npm-global"
 npm config set prefix "$HOME/.npm-global"
 export PATH="$HOME/.npm-global/bin:$PATH"
 
-# Instalar prettier vía npm (ahora que ya no dará error de permisos)
+# Instalar prettier
 npm install -g prettier
 
 # Formatters opcionales (no falla si ya está)
