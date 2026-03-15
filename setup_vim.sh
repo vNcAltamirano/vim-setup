@@ -27,11 +27,29 @@ if need_cmd sudo; then SUDO="sudo"; else SUDO=""; fi
 
 # =============== 1) paquetes base ===============
 echo "[1/6] Instalando paquetes base..."
+$SUDO add-apt-repository ppa:jonathonf/vim
 $SUDO apt-get update -y
 $SUDO apt-get install -y --no-install-recommends \
   vim git curl ca-certificates \
-  ripgrep shfmt python3-pip \
-  npm
+  ripgrep shfmt npm black clang-format
+
+# =============== 1.1) Instalar ruff ===============
+$SUDO apt update && sudo apt install -y ruff
+python3 -m pip install --user ruff 
+
+# Agrega la carpeta de apps de python al camino de búsqueda de Linux
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+
+# Aplica el cambio ahora mismo
+source ~/.zshrc
+
+# Configurar npm para instalaciones locales y evitar el error EACCES
+mkdir -p "$HOME/.npm-global"
+npm config set prefix "$HOME/.npm-global"
+export PATH="$HOME/.npm-global/bin:$PATH"
+
+# Instalar prettier vía npm (ahora que ya no dará error de permisos)
+npm install -g prettier
 
 # Formatters opcionales (no falla si ya está)
 python3 -m pip install --user --quiet black || true
