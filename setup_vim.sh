@@ -19,6 +19,7 @@ UBUNTU_VER=$(lsb_release -rs 2>/dev/null || grep -oP 'VERSION_ID="\K[^"]+' /etc/
 if [[ $(echo "$UBUNTU_VER < 24.04" | bc -l) -eq 1 ]]; then
     echo "-> Ubuntu < 24.04 detectado. Agregando PPA de Vim..."
     $SUDO add-apt-repository -y ppa:jonathonf/vim
+    $SUDO curl -sL install-node.vercel.app/lts | bash
 fi
 
 $SUDO apt-get update -y
@@ -26,8 +27,6 @@ $SUDO apt-get install -y --no-install-recommends \
   vim git curl ca-certificates \
   ripgrep shfmt black clang-format python3-pip
 
-# =============== 0) Instalar node ===============
-curl -sL install-node.vercel.app/lts | bash
 
 # =============== 1.1) Instalar ruff ===============
 echo "-> Instalando ruff..."
