@@ -21,7 +21,6 @@ UBUNTU_VER=$(lsb_release -rs 2>/dev/null || grep -oP 'VERSION_ID="\K[^"]+' /etc/
 if [[ $(echo "$UBUNTU_VER < 24.04" | bc -l) -eq 1 ]]; then
     echo "-> Ubuntu < 24.04 detectado. Agregando PPA de Vim..."
     $SUDO add-apt-repository -y ppa:jonathonf/vim
-    $SUDO curl -sL install-node.vercel.app/lts | bash
 fi
 
 $SUDO apt-get update -y
@@ -51,8 +50,22 @@ mkdir -p "$HOME/.npm-global"
 npm config set prefix "$HOME/.npm-global"
 export PATH="$HOME/.npm-global/bin:$PATH"
 
-# Instalar prettier
+# =============== 1.2) Node via NVM (Recomendado) ===============
+echo "-> Instalando NVM y Node LTS..."
+export NVM_DIR="$HOME/.nvm"
+if [ ! -d "$NVM_DIR" ]; then
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+fi
+
+# Cargar NVM para la sesión actual del script
+source "$NVM_DIR/nvm.sh"
+
+nvm install --lts
+nvm use --lts
+
+# Ahora prettier se instalará sin necesidad de trucos de permisos
 npm install -g prettier
+
 
 # Formatters opcionales (no falla si ya está)
 python3 -m pip install --user --quiet black || true
