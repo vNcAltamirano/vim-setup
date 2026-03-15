@@ -17,55 +17,55 @@ write_file() {
 }
 
 # =============== 1) paquetes base ===============
-echo "[1/6] Detectando versión de Ubuntu e instalando paquetes..."
+echo "[1/6] Detectando sistema e instalando paquetes..."
 if need_cmd sudo; then SUDO="sudo"; else SUDO=""; fi
-$SUDO apt-get update -y
-$SUDO apt-get install -y --no-install-recommends bc software-properties-common
 
-UBUNTU_VER=$(lsb_release -rs 2>/dev/null || grep -oP 'VERSION_ID="\K[^"]+' /etc/os-release)
+# --- LIMPIEZA CRÍTICA ---
+# Eliminamos el PPA fallido de intentos anteriores que bloquea el apt-get update
+echo "-> Limpiando rastros de PPAs incompatibles..."
+$SUDO rm -f /etc/apt/sources.list.d/jonathonf-ubuntu-vim-noble.list
+$SUDO rm -f /etc/apt/sources.list.d/jonathonf-ubuntu-vim-jammy.list
+
+UBUNTU_VER=$(lsb_release -rs 2>/dev/null || grep -oP 'VERSION_ID="\K[^"]+' /etc/os-release | tr -d '"')
 
 if [[ $(echo "$UBUNTU_VER < 24.04" | bc -l) -eq 1 ]]; then
-    echo "-> Ubuntu < 24.04 detectado. Agregando PPA de Vim..."
-    $SUDO add-apt-repository -y ppa:jonathonf/vim
+    echo "-> Ubuntu < 24.04 detectado. Intentando agregar PPA de Vim..."
+    $SUDO add-apt-repository -y ppa:jonathonf/vim || true
+else
+    echo "-> Ubuntu 24.04+ detectado ($UBUNTU_VER). Usando repositorios oficiales."
 fi
 
+# Ahora el update no debería fallar por el 404 del PPA
 $SUDO apt-get update -y
 $SUDO apt-get install -y --no-install-recommends \
-  vim git curl ca-certificates \
-  ripgrep shfmt clang-format python3-pip python3-venv
+  vim git curl ca-certificates ripgrep shfmt clang-format python3-pip python3-venv
 
-# =============== 1.1) Instalar ruff ===============
+# =============== 1.1) Ruff ===============
 echo "-> Instalando ruff..."
 python3 -m pip install --user ruff --break-system-packages 2>/dev/null || python3 -m pip install --user ruff
 
+if [ ! -f "$HOME/.zshrc" ]; then touch "$HOME/.zshrc"; fi
 if ! grep -q ".local/bin" ~/.zshrc; then
     echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
-# =============== 1.2) Node via NVM (Corregido) ===============
-echo "-> Limpiando conflictos previos de NPM y configurando NVM..."
-
-# Eliminar configuración de prefijo manual que causa error con NVM
-if [ -f "$HOME/.npmrc" ]; then
-    sed -i '/prefix=/d' "$HOME/.npmrc" 2>/dev/null || true
-fi
+# =============== 1.2) Node via NVM ===============
+echo "-> Configurando NVM y Node..."
+[ -f "$HOME/.npmrc" ] && sed -i '/prefix=/d' "$HOME/.npmrc" || true
 
 export NVM_DIR="$HOME/.nvm"
 if [ ! -d "$NVM_DIR" ]; then
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 fi
 
-# Cargar NVM en la sesión actual
+set +u
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-echo "-> Instalando Node LTS..."
 nvm install --lts
 nvm use --lts
-nvm alias default 'lts/*'
+set -u
 
-# Ahora instalar Prettier (NVM manejará el path global automáticamente)
 npm install -g prettier
 
 # =============== 2) vim-plug ===============
@@ -78,37 +78,18 @@ fi
 # =============== 3) ~/.vimrc ===============
 echo "[3/6] Escribiendo ~/.vimrc..."
 write_file "$HOME/.vimrc" <<'EOF'
-" --- Núcleo
 set nocompatible
 syntax on
 filetype plugin indent on
-set encoding=utf-8
 let mapleader=" "
-set shell=/usr/bin/zsh
 
-" --- Interfaz
 set number relativenumber
 set mouse=a
 set cursorline
 if has("termguicolors") && $COLORTERM ==# "truecolor"
   set termguicolors
 endif
-set scrolloff=3
-set laststatus=2
-set signcolumn=yes
 
-" --- Búsqueda e Indentación
-set ignorecase smartcase incsearch hlsearch
-set expandtab tabstop=4 shiftwidth=4 softtabstop=4
-nnoremap <silent> <leader>/ :noh<CR>
-
-" --- Persistencia
-set undofile
-set undodir=~/.vim/undo//
-set backupdir=~/.vim/backup//
-set directory=~/.vim/swap//
-
-" --- Plugins
 call plug#begin('~/.vim/plugged')
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
@@ -118,43 +99,31 @@ Plug 'preservim/nerdtree'
 Plug 'christoomey/vim-tmux-navigator'
 call plug#end()
 
-" --- Tema
 colorscheme gruvbox
 set background=dark
 let g:gruvbox_contrast_dark = 'medium'
 
-" --- Atajos Personalizados
 nmap <Leader>nt :NERDTreeFind<CR>
-xnoremap <silent> <leader>y :OSCYankVisual<CR>
-nnoremap <silent> <leader>y :OSCYank<CR>
+nnoremap <leader>r :Run<CR>
+nnoremap <leader>f :Fmt<CR>
 nmap <Leader>q :q<CR>
 
-" --- Funciones Run y Fmt
 function! s:RunCurrent()
   if &filetype ==# 'sh' | execute '!bash %'
   elseif &filetype ==# 'python' | execute '!python3 %'
   elseif &filetype ==# 'javascript' | execute '!node %'
-  elseif &filetype ==# 'cpp'
-    let l:bin='/tmp/'.expand('%:t:r')
-    execute '!g++ -std=c++20 -O2 -o ' . l:bin . ' % && ' . l:bin
-  else | echo "Sin handler :Run"
-  endif
+  else | echo "Sin comando Run" | endif
 endfunction
 command! Run call s:RunCurrent()
-nnoremap <leader>r :Run<CR>
 
 function! s:Fmt()
-  if &filetype ==# 'sh' && executable('shfmt') | execute '%!shfmt -i 4 -ci -sr'
-  elseif &filetype ==# 'python' && executable('ruff') | execute '!ruff format %' | edit
-  elseif (&filetype ==# 'javascript' || &filetype ==# 'typescript') && executable('prettier') | execute '!prettier --write %' | edit
-  elseif &filetype ==# 'cpp' && executable('clang-format') | execute '%!clang-format -i %' | edit
-  else | echo "No hay formatter para " . &filetype
-  endif
+  if &filetype ==# 'sh' | execute '%!shfmt -i 4 -ci -sr'
+  elseif &filetype ==# 'python' | execute '!ruff format %' | edit
+  elseif &filetype ==# 'javascript' | execute '!prettier --write %' | edit
+  else | echo "Sin formatter" | endif
 endfunction
 command! Fmt call s:Fmt()
-nnoremap <leader>f :Fmt<CR>
 
-" --- Skeletons
 augroup skeletons
   autocmd!
   autocmd BufNewFile *.sh 0r ~/.vim/templates/skeleton.sh
@@ -168,21 +137,14 @@ write_file "$HOME/.vim/templates/skeleton.sh" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 # Autor: Vinicio Altamirano
-
-main() {
-    echo "Iniciando script..."
-}
+main() { echo "OK"; }
 main "$@"
 EOF
 
 write_file "$HOME/.vim/templates/skeleton.py" <<'EOF'
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# Autor: Vinicio Altamirano
-
 def main():
     print("OK")
-
 if __name__ == "__main__":
     main()
 EOF
@@ -194,7 +156,5 @@ vim +':silent! PlugInstall --sync' +':qa' >/dev/null 2>&1 || true
 
 # =============== 6) Resumen ===============
 echo "========================================"
-echo "✅ ENTORNO CONFIGURADO CON ÉXITO"
-echo "Formatters: shfmt, ruff (python), prettier (js)"
-echo "Node: $(node -v) (vía NVM)"
+echo "✅ CONFIGURACIÓN COMPLETADA EN UBUNTU $UBUNTU_VER"
 echo "========================================"
