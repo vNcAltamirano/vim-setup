@@ -7,11 +7,13 @@ umask 022
 timestamp() { date +"%Y%m%d-%H%M%S"; }
 
 need_cmd() { command -v "$1" >/dev/null 2>&1; }
+$SUDO apt-get update -y
 
 # =============== 1) paquetes base ===============
 echo "[1/6] Detectando versión de Ubuntu e instalando paquetes..."
 if need_cmd sudo; then SUDO="sudo"; else SUDO=""; fi
-
+$SUDO apt-get update -y
+$SUDO apt-get install -y --no-install-recommends bc
 # Obtener versión de Ubuntu
 UBUNTU_VER=$(lsb_release -rs 2>/dev/null || grep -oP 'VERSION_ID="\K[^"]+' /etc/os-release)
 
@@ -25,7 +27,7 @@ fi
 $SUDO apt-get update -y
 $SUDO apt-get install -y --no-install-recommends \
   vim git curl ca-certificates \
-  ripgrep shfmt black clang-format python3-pip
+  ripgrep shfmt black npm clang-format python3-pip
 
 
 # =============== 1.1) Instalar ruff ===============
