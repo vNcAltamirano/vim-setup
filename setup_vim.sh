@@ -24,7 +24,7 @@ fi
 $SUDO apt-get update -y
 $SUDO apt-get install -y --no-install-recommends \
   vim git curl ca-certificates \
-  ripgrep shfmt black clang-format bc python3-pip
+  ripgrep shfmt black clang-format python3-pip
 
 # =============== 0) Instalar node ===============
 curl -sL install-node.vercel.app/lts | bash
