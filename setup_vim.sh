@@ -179,6 +179,13 @@ Plug 'christoomey/vim-tmux-navigator'
 Plug 'dense-analysis/ale'
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 call plug#end()
+
+" =========================
+" Auto install coc extensión
+" =========================
+let g:coc_global_extensions = ['coc-pyright', 'coc-tsserver', 'coc-html', 'coc-css', 'coc-sh', 'coc-json']
+
+
 " =========================
 " Tema Gruvbox + Colores
 " =========================
