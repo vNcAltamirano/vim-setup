@@ -255,9 +255,9 @@ function! s:Fmt()
   update
   if &filetype ==# 'sh' && executable('shfmt')
     silent execute '%!shfmt -i 4 -ci -sr'
-  elseif &filetype ==# 'python' && executable('black')
-    " Ejecutamos black y recargamos el archivo forzosamente
-    silent execute '!black -q %'
+  elseif &filetype ==# 'python' && executable('ruff')
+    " Ejecutamos ruff y recargamos el archivo forzosamente
+    silent execute '!ruff format %'
     edit!
     redraw!
   elseif (&filetype ==# 'javascript' || &filetype ==# 'typescript' || &filetype ==# 'css' || &filetype ==# 'html') && executable('prettier')
