@@ -1,0 +1,26 @@
+{
+    "python.pythonPath": "./.venv/bin/python",
+    "python.analysis.extraPaths": [
+        "."
+    ],
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.linting.enabled": true,
+    "python.linting.ruffEnabled": true,
+    "python.linting.ruffPath": "./.venv/bin/ruff",
+    "python.linting.mypyEnabled": false,
+    "python.formatting.provider": "ruff",
+    "python.formatting.ruffPath": "./.venv/bin/ruff",
+    "snippets.ultisnips.enable": false,
+    "suggest.noselect": false,
+    "suggest.enableFloat": true,
+    "suggest.timeout": 500,
+    "diagnostic.refreshOnInsertMode": true,
+    "diagnostic.checkCurrentLine": true,
+    "rust-analyzer.enable": true,
+    "rust-analyzer.checkOnSave": true,
+    "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.cargo.allTargets": true,
+    "coc.preferences.formatOnSave": true,
+    "snippets.ultisnips.pythonPrompt": false
+}
